@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Leaderboard - Expense Tracker</title>
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/leaderboard.css">
+    <link rel="stylesheet" href="css/userHeader.css">
+
+</head>
+<body>
+    <div id="userHeaderContainer"></div>
+    
+
+    <div class="leaderboard-container">
+
+        <div class="leaderboard-hero">
+
+            
+
+            <div class="leaderboard-hero-text">
+                <h1>Spending Showdown</h1>
+                <p class="leaderboard-subtitle">See how your spending stacks up against everyone else</p>
+            </div>
+
+        </div>
+
+        <div id="leaderboardPodium" class="leaderboard-podium"></div>
+
+        <div class="leaderboard-table-card">
+
+            <div class="leaderboard-list-head">
+                <span>Rank</span>
+                <span>User</span>
+                <span>Total Expense</span>
+            </div>
+
+            <ul id="leaderboardList" class="leaderboard-list"></ul>
+
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+    <script src="js/apiConfig.js"></script>
+
+    <script src="js/modules/auth.js"></script>
+
+    <script src="js/modules/userHeader.js"></script>
+    <script src="js/theme.js"></script>
+    <script src="js/leaderboard.js"></script>
+
+</body>
+
+</html>
