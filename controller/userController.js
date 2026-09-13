@@ -4,6 +4,7 @@ const Order = require("../model/Order");
 const S3Service = require("../services/S3Service");
 const bcrypt = require("bcrypt");
 const { generateAccessToken } = require("../utils/jwt");
+const { getPeriodBounds } = require("../services/budgetService");
 
 
 //createuser
@@ -179,184 +180,66 @@ const getincome=async (req,res)=>{
     }
 }
 
-//budget
-
-const getExpenseTotalBetweenDates = async (userId, startDate, endDate) => {
-    const result = await Expense.aggregate([
-        {
-            $match: {
-                userId: userId,
-                createdAt: {
-                    $gte: startDate,
-                    $lt: endDate
-                }
-            }
-        },
-        {
-            $group: {
-                _id: null,
-                total: { $sum: "$amount" }
-            }
-        }
-    ]);
-
-    return result.length > 0 ? result[0].total : 0;
-};
-
-const getBudget = async (req, res) => {
-    try {
-
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-        const monthlyBudget = Number(req.user.monthlyBudget) || 0;
-        const currentMonthExpenses = await getExpenseTotalBetweenDates(
-            req.user._id,
-            startOfMonth,
-            startOfNextMonth
-        );
-
-        res.status(200).json({
-            success: true,
-            monthlyBudget,
-            currentMonthExpenses,
-            remainingBudget: monthlyBudget - currentMonthExpenses
-        });
-
-    }
-    catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: "Something went wrong"
-        });
-    }
-};
-
-const updateBudget = async (req, res) => {
-    try {
-
-        const { monthlyBudget } = req.body;
-
-        const isValid =
-            monthlyBudget !== undefined &&
-            monthlyBudget !== null &&
-            !isNaN(monthlyBudget) &&
-            Number(monthlyBudget) > 0;
-
-        if (!isValid) {
-            return res.status(400).json({
-                success: false,
-                message: "Monthly budget must be a positive number"
-            });
-        }
-
-        req.user.monthlyBudget = Number(monthlyBudget);
-        await req.user.save();
-
-        const now = new Date();
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-        const currentMonthExpenses = await getExpenseTotalBetweenDates(
-            req.user._id,
-            startOfMonth,
-            startOfNextMonth
-        );
-
-        res.status(200).json({
-            success: true,
-            monthlyBudget: req.user.monthlyBudget,
-            currentMonthExpenses,
-            remainingBudget: req.user.monthlyBudget - currentMonthExpenses
-        });
-
-    }
-    catch (err) {
-        console.log(err);
-        res.status(500).json({
-            success: false,
-            message: "Something went wrong"
-        });
-    }
-};
-
 //quick statistics
 
 const getQuickStats = async (req, res) => {
     try {
-
         const now = new Date();
+        const monthBounds = getPeriodBounds("monthly", now);
+        const dayBounds = getPeriodBounds("daily", now);
 
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-        const totalExpenses = Number(req.user.totalExpense) || 0;
-
-        const thisMonthExpenses = await getExpenseTotalBetweenDates(
-            req.user._id,
-            startOfMonth,
-            startOfNextMonth
-        );
-
-        const todayExpenses = await getExpenseTotalBetweenDates(
-            req.user._id,
-            startOfToday,
-            startOfTomorrow
-        );
-
-       const topCategoryRow = await Expense.aggregate([
-            {
-                $match: {
-                    userId: req.user._id
-                }
-            },
-            {
-                $group: {
-                    _id: "$category",
-                    categoryTotal: {
-                        $sum: "$amount"
+        const [monthRow, todayRow, topCategoryRow] = await Promise.all([
+            Expense.aggregate([
+                {
+                    $match: {
+                        userId: req.user._id,
+                        createdAt: {
+                            $gte: monthBounds.start,
+                            $lt: monthBounds.end
+                        }
                     }
-                }
-            },
-            {
-                $sort: {
-                    categoryTotal: -1
-                }
-            },
-            {
-                $limit: 1
-            }
+                },
+                { $group: { _id: null, total: { $sum: "$amount" } } }
+            ]),
+            Expense.aggregate([
+                {
+                    $match: {
+                        userId: req.user._id,
+                        createdAt: {
+                            $gte: dayBounds.start,
+                            $lt: dayBounds.end
+                        }
+                    }
+                },
+                { $group: { _id: null, total: { $sum: "$amount" } } }
+            ]),
+            Expense.aggregate([
+                { $match: { userId: req.user._id } },
+                { $group: { _id: "$category", categoryTotal: { $sum: "$amount" } } },
+                { $sort: { categoryTotal: -1 } },
+                { $limit: 1 }
+            ])
         ]);
-
-        const highestCategory = topCategoryRow.length > 0
-            ? topCategoryRow[0]._id
-            : null;
 
         res.status(200).json({
             success: true,
-            totalExpenses,
-            thisMonthExpenses,
-            todayExpenses,
-            highestCategory
+            totalExpenses: Number(req.user.totalExpense) || 0,
+            thisMonthExpenses: Number(monthRow[0]?.total || 0),
+            todayExpenses: Number(todayRow[0]?.total || 0),
+            highestCategory: topCategoryRow[0]?._id || null
         });
-
-    }
-    catch (err) {
-        console.log(err);
+    } catch (err) {
+        console.error("Get quick stats failed:", err);
         res.status(500).json({
             success: false,
-            message: "Something went wrong"
+            message: "Unable to load quick statistics"
         });
     }
 };
 
 
-//membership 
+//membership
+ 
 const getMembership = async (req, res) => {
     try {
 
@@ -419,4 +302,4 @@ const downloadExpenses = async (req, res) => {
     }
 
 };
-module.exports = { createUser, loginUser,updatedincome ,getincome,downloadExpenses,getBudget,updateBudget,getQuickStats,getMembership};
+module.exports = { createUser, loginUser,updatedincome ,getincome,downloadExpenses,getQuickStats,getMembership};

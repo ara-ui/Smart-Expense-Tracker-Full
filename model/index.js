@@ -3,9 +3,9 @@ const Expense = require("./Expense");
 const Order = require("./Order");
 const ForgotPasswordRequest = require("./ForgotPasswordRequest");
 const ChangePasswordOTP = require("./ChangePasswordOTP");
-const Wallet = require("./Wallet");
 const BudgetRule = require("./BudgetRule");
 const BudgetUsage = require("./BudgetUsage");
+const BudgetAuditLog = require("./BudgetAuditLog");
 
 module.exports = {
     User,
@@ -13,7 +13,7 @@ module.exports = {
     Order,
     ForgotPasswordRequest,
     ChangePasswordOTP,
-    Wallet,
     BudgetRule,
-    BudgetUsage
+    BudgetUsage,
+    BudgetAuditLog
 };

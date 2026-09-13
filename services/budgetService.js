@@ -1,6 +1,7 @@
 const Expense = require("../model/Expense");
 const BudgetRule = require("../model/BudgetRule");
 const BudgetUsage = require("../model/BudgetUsage");
+const User = require("../model/User");
 
 const PERIODS = ["daily", "weekly", "monthly"];
 const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Kolkata";
@@ -100,6 +101,71 @@ function amountToPaise(amount) {
     return Math.round(value * 100);
 }
 
+
+async function getOrCreateBudgetRule(userId, session) {
+    let query = BudgetRule.findOne({ userId });
+    if (session) query = query.session(session);
+    let budgetRules = await query;
+
+    // One-time compatibility migration for the old User.monthlyBudget field.
+    // The new BudgetRule document is the single source of truth. We also
+    // handle an empty BudgetRule that may have been created by Phase 2/3
+    // before the legacy value was migrated.
+    let userQuery = User.findById(userId).select("monthlyBudget");
+    if (session) userQuery = userQuery.session(session);
+    const user = await userQuery;
+
+    const legacyMonthlyBudget = Number(user?.monthlyBudget);
+    const hasLegacyBudget =
+        Number.isFinite(legacyMonthlyBudget) && legacyMonthlyBudget > 0;
+    const monthlyLimitPaise = hasLegacyBudget
+        ? Math.round(legacyMonthlyBudget * 100)
+        : null;
+
+    const ruleIsEmpty =
+        budgetRules &&
+        budgetRules.dailyLimitPaise == null &&
+        budgetRules.weeklyLimitPaise == null &&
+        budgetRules.monthlyLimitPaise == null &&
+        (budgetRules.categoryLimits?.length || 0) === 0;
+
+    if (budgetRules) {
+        if (ruleIsEmpty && hasLegacyBudget) {
+            budgetRules.monthlyLimitPaise = monthlyLimitPaise;
+            await budgetRules.save({ session });
+            if (user) {
+                user.monthlyBudget = 0;
+                await user.save({ session });
+            }
+        }
+        return budgetRules;
+    }
+
+    try {
+        const created = await BudgetRule.create(
+            [{
+                userId,
+                monthlyLimitPaise
+            }],
+            { session }
+        );
+
+        if (hasLegacyBudget && user) {
+            user.monthlyBudget = 0;
+            await user.save({ session });
+        }
+
+        return created[0];
+    } catch (err) {
+        if (err.code === 11000) {
+            let retryQuery = BudgetRule.findOne({ userId });
+            if (session) retryQuery = retryQuery.session(session);
+            return retryQuery;
+        }
+        throw err;
+    }
+}
+
 async function historicalUsage(userId, periodType, category, date, session) {
     const { start, end } = getPeriodBounds(periodType, date);
     const match = { userId, createdAt: { $gte: start, $lt: end } };
@@ -157,7 +223,7 @@ function applicableRules(budgetRules, category) {
 
 async function enforceExpenseBudget({ userId, amount, category, session, date = new Date() }) {
     const amountPaise = amountToPaise(amount);
-    const budgetRules = await BudgetRule.findOne({ userId }).session(session);
+    const budgetRules = await getOrCreateBudgetRule(userId, session);
 
     if (!budgetRules) return { amountPaise, checks: [] };
 
@@ -233,7 +299,7 @@ async function reverseExpenseBudget({ userId, amount, category, createdAt, sessi
 }
 
 async function getBudgetStatus(userId, date = new Date()) {
-    const budgetRules = await BudgetRule.findOne({ userId });
+    const budgetRules = await getOrCreateBudgetRule(userId, null);
     const result = { daily: [], weekly: [], monthly: [] };
     if (!budgetRules) return { budgetRules: null, usage: result };
 
@@ -258,6 +324,7 @@ module.exports = {
     enforceExpenseBudget,
     reverseExpenseBudget,
     getBudgetStatus,
+    getOrCreateBudgetRule,
     getPeriodInfo,
     getPeriodBounds
 };

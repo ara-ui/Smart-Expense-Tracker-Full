@@ -63,15 +63,15 @@ function toggleFilterControls() {
 
     if (currentView === "custom") {
 
-        periodNavControls.style.display = "none";
-        customRangeControls.style.display = "flex";
+        periodNavControls.classList.add("is-hidden");
+        customRangeControls.classList.remove("is-hidden");
 
     }
 
     else {
 
-        periodNavControls.style.display = "flex";
-        customRangeControls.style.display = "none";
+        periodNavControls.classList.remove("is-hidden");
+        customRangeControls.classList.add("is-hidden");
 
     }
 
@@ -416,7 +416,7 @@ async function getReport() {
 
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="4" style="text-align:center;padding:25px;">
+                    <td colspan="4" class="report-empty-cell">
                         No expenses found.
                     </td>
                 </tr>
@@ -547,14 +547,14 @@ function updateCategoryChart(expenses) {
 
     if (expenses.length === 0) {
 
-        canvas.style.display = "none";
-        emptyMessage.style.display = "block";
+        canvas.classList.add("is-hidden");
+        emptyMessage.classList.remove("is-hidden");
         return;
 
     }
 
-    canvas.style.display = "block";
-    emptyMessage.style.display = "none";
+    canvas.classList.remove("is-hidden");
+    emptyMessage.classList.add("is-hidden");
 
     const totals = getCategoryTotals(expenses);
 
@@ -600,14 +600,14 @@ function updateTrendChart(expenses) {
 
     if (expenses.length === 0) {
 
-        canvas.style.display = "none";
-        emptyMessage.style.display = "block";
+        canvas.classList.add("is-hidden");
+        emptyMessage.classList.remove("is-hidden");
         return;
 
     }
 
-    canvas.style.display = "block";
-    emptyMessage.style.display = "none";
+    canvas.classList.remove("is-hidden");
+    emptyMessage.classList.add("is-hidden");
 
     const { labels, values } = getDailyTotals(expenses);
 

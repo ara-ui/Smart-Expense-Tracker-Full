@@ -28,7 +28,7 @@ const { cashfreeWebhook } = require("./controller/purchaseController");
 const premiumRoutes = require("./routes/premiumRoutes");
 const passwordRoutes = require("./routes/password");
 const reportsRoutes = require("./routes/reportsRoutes");
-const walletRoutes = require("./routes/walletRoutes");
+const budgetRoutes = require("./routes/budgetRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 
@@ -84,7 +84,7 @@ app.use('/purchase', purchaseRoutes);
 app.use("/premium", premiumRoutes);
 app.use("/password", passwordRoutes);
 app.use("/expense", reportsRoutes);
-app.use("/wallet", walletRoutes);
+app.use("/budget", budgetRoutes);
 
 // central error handler - must be registered after all routes
 app.use(errorHandler);

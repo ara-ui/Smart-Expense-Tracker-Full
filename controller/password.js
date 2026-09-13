@@ -335,3 +335,49 @@ exports.verifyChangePassword = async (req, res) => {
     });
   }
 };
+
+// VERIFY PASSWORD FOR SENSITIVE BUDGET CHANGES
+exports.verifyBudgetAccess = async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password || typeof password !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required"
+      });
+    }
+
+    const user = await User.findById(req.user._id).select("password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      return res.status(401).json({
+        success: false,
+        message: "Incorrect password"
+      });
+    }
+
+    const { generateBudgetReauthToken } = require("../utils/jwt");
+
+    return res.status(200).json({
+      success: true,
+      message: "Budget editing access verified",
+      reauthToken: generateBudgetReauthToken(user._id)
+    });
+  } catch (err) {
+    console.error("Budget access verification error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to verify password"
+    });
+  }
+};

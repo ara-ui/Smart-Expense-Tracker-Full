@@ -33,6 +33,8 @@ const userSchema = new mongoose.Schema(
             default: 0
         },
 
+        // Deprecated legacy budget field. New budgets are stored in BudgetRule.
+        // Kept temporarily so the compatibility migration can read old data.
         monthlyBudget: {
             type: Number,
             default: 0

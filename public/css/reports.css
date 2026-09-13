@@ -542,3 +542,7 @@ grid-template-columns:1fr;
     margin-top: 8px;
     margin-bottom: 10px;
 }
+
+.is-hidden { display: none !important; }
+
+.report-empty-cell { text-align: center; padding: 25px; }

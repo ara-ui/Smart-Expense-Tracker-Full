@@ -56,8 +56,9 @@
                 </button>
 
                 <button
+                    type="button"
                     class="dashboard-btn"
-                    onclick="window.location.href='expense.html'">
+                    id="dashboardBtn">
                     ← Back to Dashboard
                 </button>
 
@@ -83,27 +84,7 @@
 
     <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
     <script src="js/modules/premium.js"></script>
-
-
-    <script>
-
-        requireAuth();
-
-        // Premium users should never see this page.
-        if (isPremium()) {
-
-            window.location.href = "expense.html";
-
-        } else {
-
-            document
-                .getElementById("upgradeBtn")
-                .addEventListener("click", buyPremium);
-
-        }
-
-    </script>
-
+    <script src="js/premium-required.js"></script>
 </body>
 
 </html>

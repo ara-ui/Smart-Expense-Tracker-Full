@@ -8,9 +8,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     renderProfileCard(user);
     renderMembershipCard(user);
-    renderBudgetCard();
     renderQuickStats();
-    renderMotivationCard();
     renderSettingsShortcuts();
 
 });
@@ -106,21 +104,6 @@ function renderMembershipCard(user) {
                         <div class="acc-detail-value acc-placeholder" id="membLastPaymentDate">Loading...</div>
                     </div>
 
-                    <div>
-                        <div class="acc-detail-label">Expiry Date</div>
-                        <div class="acc-detail-value">Lifetime Membership</div>
-                    </div>
-
-                    <div>
-                        <div class="acc-detail-label">Remaining Days</div>
-                        <div class="acc-detail-value">Lifetime</div>
-                    </div>
-
-                    <div>
-                        <div class="acc-detail-label">Payment Method</div>
-                        <div class="acc-detail-value acc-placeholder">Not Recorded</div>
-                    </div>
-
                 </div>
 
             </div>
@@ -140,7 +123,7 @@ function renderMembershipCard(user) {
                     <span class="acc-badge acc-badge-free">Free User</span>
                 </div>
 
-                <p class="acc-card-subtext" style="margin-bottom:16px;">
+                <p class="acc-card-subtext acc-membership-upgrade-text">
                 Upgrade to Premium to unlock advanced reports,
                 spending analytics, leaderboard, and exports.
                 </p>
@@ -203,219 +186,11 @@ async function loadMembershipDetails() {
 }
 
 // ---------------------------------------------------------------------
-// 3. MONTHLY BUDGET CARD
-// ---------------------------------------------------------------------
-// Sprint 2.3: wired to GET/PUT /users/budget via the shared `api` instance
-// from apiConfig.js (already loaded on account.html, adds the auth header
-// automatically). Keeps the same acc-card / acc-membership-details /
-// acc-detail-label / acc-detail-value classes from Sprint 2.2.
-
-// Holds the last-loaded budget response so the edit form and the display
-// can both read from one place instead of re-fetching on every toggle.
-let currentBudgetData = {
-    monthlyBudget: 0,
-    currentMonthExpenses: 0,
-    remainingBudget: 0
-};
-
-function renderBudgetCard() {
-
-    document.getElementById("budgetSection").innerHTML = `
-
-        <div class="acc-card">
-
-            <div class="acc-card-title">💰 Monthly Budget</div>
-
-            <div class="acc-membership-details" id="budgetDisplay">
-
-                <div>
-                    <div class="acc-detail-label">Monthly Budget</div>
-                    <div class="acc-detail-value acc-placeholder" id="budgetValue">Loading...</div>
-                </div>
-
-                <div>
-                    <div class="acc-detail-label">Current Month Expenses</div>
-                    <div class="acc-detail-value acc-placeholder" id="budgetSpentValue">Loading...</div>
-                </div>
-
-                <div>
-                    <div class="acc-detail-label">Remaining Budget</div>
-                    <div class="acc-detail-value acc-placeholder" id="budgetRemainingValue">Loading...</div>
-                </div>
-
-            </div>
-
-            <button class="acc-btn acc-btn-secondary" id="editBudgetBtn" style="margin-top:18px;">
-                Edit Budget
-            </button>
-
-            <div class="acc-budget-edit" id="budgetEditForm" style="display:none;">
-
-                <label class="acc-detail-label" for="budgetInput">New Monthly Budget (₹)</label>
-                <input type="number" id="budgetInput" class="acc-input" min="1" placeholder="e.g. 15000">
-
-                <p class="acc-error-text" id="budgetError" style="display:none;"></p>
-
-                <div class="acc-form-actions">
-                    <button class="acc-btn" id="saveBudgetBtn">Save</button>
-                    <button class="acc-btn acc-btn-secondary" id="cancelBudgetBtn">Cancel</button>
-                </div>
-
-            </div>
-
-        </div>
-
-    `;
-
-    document.getElementById("editBudgetBtn").addEventListener("click", showBudgetEditor);
-    document.getElementById("cancelBudgetBtn").addEventListener("click", hideBudgetEditor);
-    document.getElementById("saveBudgetBtn").addEventListener("click", saveBudget);
-
-    loadBudget();
-
-}
-
-
-async function loadBudget() {
-
-    try {
-
-        const response = await api.get("/users/budget");
-
-        currentBudgetData = response.data;
-
-        updateBudgetDisplay();
-
-        // Update Saver immediately using the same budget data
-        const medal = computeMedal(
-            currentBudgetData.monthlyBudget,
-            currentBudgetData.currentMonthExpenses
-        );
-
-        renderMedalCard(medal);
-
-    }
-    catch (err) {
-
-        console.log(err);
-
-        document.getElementById("budgetValue").textContent = "Unable to load";
-        document.getElementById("budgetSpentValue").textContent = "Unable to load";
-        document.getElementById("budgetRemainingValue").textContent = "Unable to load";
-
-    }
-
-}
-
-
-function updateBudgetDisplay() {
-
-    const budgetValueEl = document.getElementById("budgetValue");
-    const spentValueEl = document.getElementById("budgetSpentValue");
-    const remainingValueEl = document.getElementById("budgetRemainingValue");
-
-    budgetValueEl.classList.remove("acc-placeholder");
-
-    if (!currentBudgetData.monthlyBudget) {
-        budgetValueEl.textContent = "Not set yet";
-        budgetValueEl.classList.add("acc-placeholder");
-    } else {
-        budgetValueEl.textContent = `₹${currentBudgetData.monthlyBudget}`;
-    }
-
-    spentValueEl.classList.remove("acc-placeholder");
-    spentValueEl.textContent = `₹${currentBudgetData.currentMonthExpenses}`;
-
-    remainingValueEl.classList.remove("acc-placeholder");
-    remainingValueEl.textContent = `₹${currentBudgetData.remainingBudget}`;
-
-}
-
-function showBudgetEditor() {
-
-    document.getElementById("budgetEditForm").style.display = "block";
-    document.getElementById("budgetInput").value = currentBudgetData.monthlyBudget || "";
-    document.getElementById("budgetError").style.display = "none";
-    document.getElementById("budgetInput").focus();
-
-}
-
-function hideBudgetEditor() {
-
-    document.getElementById("budgetEditForm").style.display = "none";
-    document.getElementById("budgetError").style.display = "none";
-
-}
-
-async function saveBudget() {
-
-    const input = document.getElementById("budgetInput");
-    const errorEl = document.getElementById("budgetError");
-    const saveBtn = document.getElementById("saveBudgetBtn");
-
-    const value = Number(input.value);
-
-    if (!input.value || isNaN(value) || value <= 0) {
-
-        errorEl.textContent = "Please enter a valid positive number.";
-        errorEl.style.display = "block";
-
-        return;
-    }
-
-    try {
-
-        // Prevent multiple clicks while saving
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Saving...";
-
-        const response = await api.put("/users/budget", {
-            monthlyBudget: value
-        });
-
-        // Store the fresh budget data
-        currentBudgetData = response.data;
-
-        // Update Monthly Budget card immediately
-        updateBudgetDisplay();
-
-        // Update Saver/Medal immediately
-        const medal = computeMedal(
-            currentBudgetData.monthlyBudget,
-            currentBudgetData.currentMonthExpenses
-        );
-
-        renderMedalCard(medal);
-
-        // Close edit form
-        hideBudgetEditor();
-
-    }
-    catch (err) {
-
-        errorEl.textContent =
-            (err.response && err.response.data && err.response.data.message)
-                ? err.response.data.message
-                : "Something went wrong. Please try again.";
-
-        errorEl.style.display = "block";
-
-    }
-    finally {
-
-        saveBtn.disabled = false;
-        saveBtn.textContent = "Save";
-
-    }
-
-}
-
-// ---------------------------------------------------------------------
 // 4. QUICK STATISTICS
 // ---------------------------------------------------------------------
 // Wired to GET /users/stats via the shared `api` instance from
-// apiConfig.js (same pattern used for the Budget card). Keeps the exact
-// same .acc-card-title / .acc-grid / .acc-stat-card markup from Sprint 2.2 —
+// apiConfig.js. Keeps the same .acc-card-title / .acc-grid /
+// .acc-stat-card markup from Sprint 2.2 —
 // only the values become real.
 
 function renderQuickStats() {
@@ -487,198 +262,6 @@ async function loadQuickStats() {
     }
 
 }
-
-function computeMedal(monthlyBudget, currentMonthExpenses) {
-
-    const budget = Number(monthlyBudget) || 0;
-    const spent = Number(currentMonthExpenses) || 0;
-
-    if (budget === 0) {
-
-        return {
-            icon: "🥉",
-            title: "Bronze Saver",
-            message: "No Budget Set",
-            savingsPercent: 0,
-            monthlyBudget: budget,
-            currentMonthExpenses: spent,
-            isDiamond: false,
-            progressLabel: "Progress to Silver",
-            progressPercent: 0
-        };
-
-    }
-
-    const rawSavingsPercent = ((budget - spent) / budget) * 100;
-
-    // Never allow savings below 0%
-    const savingsPercent = Math.max(0, rawSavingsPercent);
-
-    let tier;
-
-    if (savingsPercent < 10) {
-        tier = "bronze";
-    } else if (savingsPercent < 30) {
-        tier = "silver";
-    } else if (savingsPercent < 50) {
-        tier = "gold";
-    } else {
-        tier = "diamond";
-    }
-
-    const tierConfig = {
-        bronze: {
-            icon: "🥉",
-            title: "Bronze Saver",
-            message: "Every rupee saved counts — keep going!",
-            rangeStart: 0,
-            rangeEnd: 10,
-            progressLabel: "Progress to Silver"
-        },
-        silver: {
-            icon: "🥈",
-            title: "Silver Saver",
-            message: "Nice work! Your savings habit is building.",
-            rangeStart: 10,
-            rangeEnd: 30,
-            progressLabel: "Progress to Gold"
-        },
-        gold: {
-            icon: "🥇",
-            title: "Gold Saver",
-            message: "Excellent! You're mastering your budget.",
-            rangeStart: 30,
-            rangeEnd: 50,
-            progressLabel: "Progress to Diamond"
-        },
-        diamond: {
-            icon: "💎",
-            title: "Diamond Saver",
-            message: "Incredible savings discipline — you're a Diamond Saver!",
-            rangeStart: 50,
-            rangeEnd: 100,
-            progressLabel: "Highest Medal Achieved"
-        }
-    };
-
-    const config = tierConfig[tier];
-    const isDiamond = tier === "diamond";
-
-    let progressPercent;
-
-    if (isDiamond) {
-
-        progressPercent = 100;
-
-    } else {
-
-        progressPercent =
-            ((savingsPercent - config.rangeStart) / (config.rangeEnd - config.rangeStart)) * 100;
-
-        progressPercent = Math.min(100, Math.max(0, progressPercent));
-
-    }
-
-    return {
-        icon: config.icon,
-        title: config.title,
-        message: config.message,
-        savingsPercent,
-        monthlyBudget: budget,
-        currentMonthExpenses: spent,
-        isDiamond,
-        progressLabel: config.progressLabel,
-        progressPercent
-    };
-
-}
-
-function renderMotivationCard() {
-
-    document.getElementById("motivationSection").innerHTML = `
-
-        <div class="acc-card acc-medal-card">
-
-            <div style="display:flex; align-items:center; gap:18px;">
-
-                <div class="acc-medal-icon">🥉</div>
-
-                <div style="flex:1;">
-                    <div class="acc-medal-title">Loading...</div>
-                    <div class="acc-medal-message">Calculating your savings medal...</div>
-                </div>
-
-            </div>
-
-        </div>
-
-    `;
-
-
-
-}
-
-
-
-function renderMedalCard(medal) {
-
-    const progressSection = medal.isDiamond
-        ? `
-            <span class="acc-badge" style="background:rgba(255,255,255,.2); color:white;">
-                🏆 Highest Medal Achieved
-            </span>
-        `
-        : `
-            <div class="acc-progress-label">${medal.progressLabel}</div>
-            <div class="acc-progress-track">
-                <div class="acc-progress-fill" style="width:${medal.progressPercent}%;"></div>
-            </div>
-        `;
-
-    document.getElementById("motivationSection").innerHTML = `
-
-        <div class="acc-card acc-medal-card">
-
-            <div style="display:flex; align-items:center; gap:18px;">
-
-                <div class="acc-medal-icon">${medal.icon}</div>
-
-                <div style="flex:1;">
-                    <div class="acc-medal-title">${medal.title}</div>
-                    <div class="acc-medal-message">${medal.message}</div>
-                </div>
-
-            </div>
-
-            <div class="acc-medal-divider"></div>
-
-            ${progressSection}
-
-            <div class="acc-medal-stats">
-
-                <div>
-                    <div class="acc-medal-stat-label">Savings Percentage</div>
-                    <div class="acc-medal-stat-value">${medal.savingsPercent.toFixed(1)}%</div>
-                </div>
-
-                <div>
-                    <div class="acc-medal-stat-label">Monthly Budget</div>
-                    <div class="acc-medal-stat-value">₹${medal.monthlyBudget}</div>
-                </div>
-
-                <div>
-                    <div class="acc-medal-stat-label">Current Month Spending</div>
-                    <div class="acc-medal-stat-value">₹${medal.currentMonthExpenses}</div>
-                </div>
-
-            </div>
-
-        </div>
-
-    `;
-
-}
-
 
 function renderSettingsShortcuts() {
 
@@ -947,7 +530,7 @@ function openChangePasswordModal() {
                     <p
                         class="password-error"
                         id="passwordError"
-                        style="display:none;">
+                        class="is-hidden">
                     </p>
 
                     <button
@@ -964,7 +547,7 @@ function openChangePasswordModal() {
 
                 <div
                     id="passwordStepTwo"
-                    style="display:none;">
+                    class="is-hidden">
 
                     <div class="password-success-message">
                         ✓ Verification code sent to your registered email.
@@ -986,7 +569,7 @@ function openChangePasswordModal() {
                     <p
                         class="password-error"
                         id="otpError"
-                        style="display:none;">
+                        class="is-hidden">
                     </p>
 
                     <button

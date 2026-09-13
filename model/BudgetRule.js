@@ -3,7 +3,7 @@ const { CATEGORIES } = require("../utils/categories");
 
 const PERIODS = ["daily", "weekly", "monthly"];
 
-// All limits are stored as integer paise - see model/Wallet.js for why.
+// All limits are stored as integer paise to avoid floating-point money errors.
 const categoryLimitSchema = new mongoose.Schema(
     {
         category: {
