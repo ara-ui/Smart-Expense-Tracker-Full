@@ -4,6 +4,7 @@ const Order = require("../../model/Order");
 const { User } = require("../../model");
 const { getProvider } = require("./providerRegistry");
 const { applyPurposeEffect } = require("./purposeHandlers");
+const { upsertTransaction } = require("./transactionService");
 
 const PROCESSING_LEASE_MS = 2 * 60 * 1000;
 
@@ -80,10 +81,18 @@ const verifyAndApply = async ({ orderId, userId }) => {
     }
 
     if (existing.status === "SUCCESSFUL") {
+        await upsertTransaction({
+            order: existing,
+            status: "SUCCESS"
+        });
         return { state: "SUCCESS", order: existing };
     }
 
     if (existing.status === "FAILED") {
+        await upsertTransaction({
+            order: existing,
+            status: "FAILED"
+        });
         return { state: "FAILED", order: existing };
     }
 
@@ -115,6 +124,12 @@ const verifyAndApply = async ({ orderId, userId }) => {
             }
         );
 
+        await upsertTransaction({
+            order,
+            payment,
+            status: "PENDING"
+        });
+
         return { state: "PENDING", order };
     }
 
@@ -132,6 +147,12 @@ const verifyAndApply = async ({ orderId, userId }) => {
             { _id: order._id, status: "PROCESSING" },
             failedUpdate
         );
+
+        await upsertTransaction({
+            order,
+            payment,
+            status: "FAILED"
+        });
 
         return { state: "FAILED", order };
     }
@@ -160,6 +181,14 @@ const verifyAndApply = async ({ orderId, userId }) => {
             if (!current) return;
 
             finalized = true;
+
+            await upsertTransaction({
+                order: current,
+                payment,
+                status: "SUCCESS",
+                session
+            });
+
             await applyPurposeEffect({
                 order: current,
                 session

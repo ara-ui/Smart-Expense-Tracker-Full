@@ -5,7 +5,8 @@ const ForgotPasswordRequest = require("./ForgotPasswordRequest");
 const ChangePasswordOTP = require("./ChangePasswordOTP");
 const BudgetRule = require("./BudgetRule");
 const BudgetUsage = require("./BudgetUsage");
-const BudgetAuditLog = require("./BudgetAuditLog");
+const Transaction = require("./Transaction");
+const WebhookEvent = require("./WebhookEvent");
 
 module.exports = {
     User,
@@ -15,5 +16,6 @@ module.exports = {
     ChangePasswordOTP,
     BudgetRule,
     BudgetUsage,
-    BudgetAuditLog
+    Transaction,
+    WebhookEvent
 };

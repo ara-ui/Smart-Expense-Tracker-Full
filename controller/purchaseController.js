@@ -1,9 +1,9 @@
 const { generateAccessToken } = require("../utils/jwt");
 const {
     createPremiumOrder,
-    verifyAndApply,
-    verifyAndApplyByOrderId
+    verifyAndApply
 } = require("../services/payments/paymentService");
+const { processCashfreeWebhook } = require("../services/payments/webhookService");
 
 const successResponse = (res, user, order) => {
     const token = generateAccessToken(
@@ -112,8 +112,6 @@ exports.cashfreeReturn = async (req, res) => {
 };
 
 exports.cashfreeWebhook = async (req, res) => {
-    const provider = require("../services/payments/providers/cashfreeProvider");
-
     try {
         const signature = req.header("x-webhook-signature");
         const timestamp = req.header("x-webhook-timestamp");
@@ -121,34 +119,37 @@ exports.cashfreeWebhook = async (req, res) => {
             ? req.body.toString("utf8")
             : "";
 
-        if (!provider.verifyWebhookSignature({
+        const result = await processCashfreeWebhook({
             signature,
             timestamp,
             rawBody
-        })) {
+        });
+
+        return res.status(200).json({
+            success: true,
+            duplicate: Boolean(result.duplicate),
+            state: result.state
+        });
+    } catch (err) {
+        console.error("Cashfree webhook processing failed:", err);
+
+        if (err.code === "INVALID_WEBHOOK_SIGNATURE") {
             return res.status(401).json({
                 success: false,
                 message: "Invalid webhook signature"
             });
         }
 
-        const payload = JSON.parse(rawBody);
-        const orderId =
-            payload?.data?.order?.order_id ||
-            payload?.data?.order?.orderId;
-
-        if (orderId) {
-            // Webhook is a trigger to reconcile provider state; provider
-            // fetch remains authoritative and idempotent.
-            await verifyAndApplyByOrderId(orderId);
+        if (err.code === "INVALID_WEBHOOK_JSON") {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid webhook"
+            });
         }
 
-        return res.status(200).json({ success: true });
-    } catch (err) {
-        console.error("Cashfree webhook processing failed:", err);
-        return res.status(400).json({
+        return res.status(500).json({
             success: false,
-            message: "Invalid webhook"
+            message: "Webhook processing failed"
         });
     }
 };
