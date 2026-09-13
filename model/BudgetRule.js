@@ -76,4 +76,14 @@ const budgetRuleSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
+budgetRuleSchema.path("categoryLimits").validate(function (limits) {
+    const seen = new Set();
+    for (const limit of limits || []) {
+        const key = `${limit.category}:${limit.period}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+    }
+    return true;
+}, "Duplicate category + period budget rule");
+
 module.exports = mongoose.model("BudgetRule", budgetRuleSchema);

@@ -31,10 +31,7 @@ const createOrder = async ({ orderId, amountMinor, currency, user }) => {
         customer_details: {
             customer_id: user._id.toString(),
             customer_email: user.email,
-            // Sandbox fallback is retained for existing users who predate
-            // phone collection. Production should collect a real phone and
-            // set CASHFREE_DEFAULT_CUSTOMER_PHONE only as a controlled
-            // migration fallback, not as a customer identity substitute.
+
             customer_phone:
                 user.phone ||
                 process.env.CASHFREE_DEFAULT_CUSTOMER_PHONE ||

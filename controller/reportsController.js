@@ -14,9 +14,6 @@ const getReport = async (req, res) => {
 
         if (customStartDate && customEndDate) {
 
-            // Custom date range
-            // End date is made inclusive by moving the upper
-            // boundary to the start of the following day.
 
             startDate = new Date(customStartDate);
             endDate = new Date(customEndDate);

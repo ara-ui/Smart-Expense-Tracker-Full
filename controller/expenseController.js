@@ -1,6 +1,12 @@
 const mongoose = require('mongoose');
 const Expense=require('../model/Expense');
 const aiService = require("../services/aiService");
+const {
+    BudgetExceededError,
+    amountToPaise,
+    enforceExpenseBudget,
+    reverseExpenseBudget
+} = require("../services/budgetService");
 
 
 const addExpense = async (req, res) => {
@@ -8,59 +14,92 @@ const addExpense = async (req, res) => {
 
     try {
         const { amount, description } = req.body;
+        const numericAmount = Number(amount);
 
-        if (!amount || !description) {
+        if (!description || typeof description !== "string" || !description.trim()) {
             return res.status(400).json({
                 success: false,
-                message: "All fields are required"
+                message: "Description is required"
             });
         }
 
-        // Get category from AI
-        let category = "Other";
-
         try {
-            category = await aiService.getCategory(description);
+            amountToPaise(numericAmount);
+        } catch (err) {
+            return res.status(400).json({
+                success: false,
+                message: err.message
+            });
+        }
+
+        // Get category from AI. The fallback remains Other so an AI outage
+        // does not prevent a legitimate manual expense from being recorded.
+        let category = "Other";
+        try {
+            category = await aiService.getCategory(description.trim());
         } catch (err) {
             console.log("AI Error:", err.message);
         }
 
+        const { CATEGORIES } = require("../utils/categories");
+        if (!CATEGORIES.includes(category)) category = "Other";
+
         let expense;
-        await session.withTransaction(async () => {
-            const created = await Expense.create(
-                [{
-                    amount,
-                    description,
+        try {
+            await session.withTransaction(async () => {
+                // Budget enforcement and the expense + totalExpense updates
+                // happen in one MongoDB transaction. BudgetUsage writes are
+                // therefore rolled back automatically if expense creation or
+                // the user update fails.
+                await enforceExpenseBudget({
+                    userId: req.user._id,
+                    amount: numericAmount,
                     category,
-                    userId: req.user._id
-                }],
-                { session }
-            );
+                    session
+                });
 
-            expense = created[0];
+                const created = await Expense.create(
+                    [{
+                        amount: numericAmount,
+                        description: description.trim(),
+                        category,
+                        userId: req.user._id
+                    }],
+                    { session }
+                );
 
-            // Add expense amount to user's total expense
-            req.user.totalExpense =
-                Number(req.user.totalExpense) + Number(amount);
+                expense = created[0];
 
-            await req.user.save({ session });
-        });
+                req.user.totalExpense =
+                    Number(req.user.totalExpense) + numericAmount;
+
+                await req.user.save({ session });
+            });
+        } catch (err) {
+            if (err instanceof BudgetExceededError) {
+                return res.status(409).json({
+                    success: false,
+                    code: err.code,
+                    message: "Expense would exceed your budget limit",
+                    budget: err.details
+                });
+            }
+            throw err;
+        }
 
         res.status(201).json({
             success: true,
             message: "Expense Added",
             expense
         });
-    }
-    catch (err) {
+    } catch (err) {
         console.log(err);
         res.status(500).json({
             success: false,
             message: "Something went wrong"
         });
-    }
-    finally {
-        session.endSession();
+    } finally {
+        await session.endSession();
     }
 };
 
@@ -114,20 +153,26 @@ const deleteExpense = async (req, res) => {
 
     try {
         let expense;
-           await session.withTransaction(async () => {
+        await session.withTransaction(async () => {
             expense = await Expense.findOne({
                 _id: req.params.id,
                 userId: req.user._id
             }).session(session);
 
-            if (!expense) {
-                return;
-            }
+            if (!expense) return;
 
             await Expense.deleteOne({
                 _id: expense._id,
                 userId: req.user._id
             }).session(session);
+
+            await reverseExpenseBudget({
+                userId: req.user._id,
+                amount: expense.amount,
+                category: expense.category,
+                createdAt: expense.createdAt,
+                session
+            });
 
             req.user.totalExpense =
                 Number(req.user.totalExpense) - Number(expense.amount);
@@ -146,16 +191,14 @@ const deleteExpense = async (req, res) => {
             success: true,
             message: "Expense deleted"
         });
-
     } catch (err) {
         console.log(err);
         res.status(500).json({
             success: false,
             message: "Something went wrong"
         });
-    }
-    finally {
-        session.endSession();
+    } finally {
+        await session.endSession();
     }
 };
 

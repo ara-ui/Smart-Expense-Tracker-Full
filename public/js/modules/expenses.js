@@ -63,6 +63,21 @@ async function addExpense(e){
 
         console.log(err);
 
+        if (err.response?.status === 409 && err.response?.data?.code === "BUDGET_EXCEEDED") {
+            const budget = err.response.data.budget;
+            const periodLabel = budget?.period
+                ? budget.period.charAt(0).toUpperCase() + budget.period.slice(1)
+                : "Budget";
+            const categoryLabel = budget?.category ? ` (${budget.category})` : "";
+            const remaining = Number(budget?.remainingPaise || 0) / 100;
+            alert(
+                `${periodLabel}${categoryLabel} budget exceeded. ` +
+                `Remaining: ₹${remaining.toFixed(2)}`
+            );
+        } else if (err.response?.data?.message) {
+            alert(err.response.data.message);
+        }
+
     }
 
 }

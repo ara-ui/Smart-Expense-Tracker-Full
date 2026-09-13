@@ -1,16 +1,12 @@
 const Wallet = require("../model/Wallet");
 const BudgetRule = require("../model/BudgetRule");
 const { CATEGORIES } = require("../utils/categories");
+const { getBudgetStatus } = require("../services/budgetService");
 
 const PERIODS = ["daily", "weekly", "monthly"];
 
 const isPositiveInt = (v) => Number.isInteger(v) && v > 0;
 const isNonNegativeInt = (v) => Number.isInteger(v) && v >= 0;
-
-// Every lookup below is scoped to req.user._id (set by the authenticate
-// middleware) - never to an id supplied by the client - so there is no
-// wallet/budget-rule id in the API surface for another user's data to leak
-// through.
 
 const getOrCreateWallet = async (userId) => {
     const existing = await Wallet.findOne({ userId });
@@ -52,11 +48,6 @@ exports.getWallet = async (req, res) => {
         res.status(500).json({ success: false, message: "Something went wrong" });
     }
 };
-
-// PUT /wallet
-// Sets the user's tracked spending-allowance balance. This does not move
-// any real money - it's the user manually recording/adjusting their own
-// virtual budget figure.
 exports.updateWallet = async (req, res) => {
     try {
         const { balancePaise } = req.body;
@@ -79,7 +70,7 @@ exports.updateWallet = async (req, res) => {
     }
 };
 
-// GET /wallet/budget-rules
+
 exports.getBudgetRules = async (req, res) => {
     try {
         const budgetRules = await getOrCreateBudgetRule(req.user._id);
@@ -89,10 +80,6 @@ exports.getBudgetRules = async (req, res) => {
         res.status(500).json({ success: false, message: "Something went wrong" });
     }
 };
-
-// PUT /wallet/budget-rules
-// Updates the overall daily/weekly/monthly limits. Any field left out of
-// the body is untouched; sending a field as null clears that limit.
 exports.updateBudgetRules = async (req, res) => {
     try {
         const { dailyLimitPaise, weeklyLimitPaise, monthlyLimitPaise } = req.body;
@@ -122,9 +109,6 @@ exports.updateBudgetRules = async (req, res) => {
         res.status(500).json({ success: false, message: "Something went wrong" });
     }
 };
-
-// POST /wallet/budget-rules/category  { category, period?, limitPaise }
-// Creates or updates the limit for one category+period pair.
 exports.upsertCategoryLimit = async (req, res) => {
     try {
         const { category, limitPaise } = req.body;
@@ -166,7 +150,6 @@ exports.upsertCategoryLimit = async (req, res) => {
     }
 };
 
-// DELETE /wallet/budget-rules/category/:category?period=monthly
 exports.deleteCategoryLimit = async (req, res) => {
     try {
         const { category } = req.params;
@@ -203,9 +186,6 @@ exports.deleteCategoryLimit = async (req, res) => {
     }
 };
 
-// GET /wallet/summary - wallet + budget-rule config together, for a
-// dashboard to render in one call. No calculation against real expenses
-// yet - that's the budget engine, which is a later phase.
 exports.getSummary = async (req, res) => {
     try {
         const [wallet, budgetRules] = await Promise.all([
@@ -214,6 +194,16 @@ exports.getSummary = async (req, res) => {
         ]);
 
         res.status(200).json({ success: true, wallet, budgetRules });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ success: false, message: "Something went wrong" });
+    }
+};
+
+exports.getBudgetStatus = async (req, res) => {
+    try {
+        const status = await getBudgetStatus(req.user._id);
+        res.status(200).json({ success: true, ...status });
     } catch (err) {
         console.log(err);
         res.status(500).json({ success: false, message: "Something went wrong" });

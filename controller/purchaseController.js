@@ -94,10 +94,6 @@ exports.updateTransactionStatus = async (req, res) => {
     }
 };
 
-// Cashfree may redirect here when popup checkout cannot stay in the same
-// window. This endpoint intentionally does NOT grant premium or perform a
-// payment side effect. It only sends the browser back to the frontend,
-// where the authenticated verification endpoint performs the effect.
 exports.cashfreeReturn = async (req, res) => {
     const orderId = typeof req.query.order_id === "string"
         ? req.query.order_id
@@ -115,8 +111,6 @@ exports.cashfreeReturn = async (req, res) => {
     return res.redirect(303, target.toString());
 };
 
-// Cashfree webhooks are provider-to-server notifications. Signature
-// verification happens before parsing/using the payload.
 exports.cashfreeWebhook = async (req, res) => {
     const provider = require("../services/payments/providers/cashfreeProvider");
 

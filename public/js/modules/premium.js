@@ -1,9 +1,4 @@
 // Premium membership + Cashfree checkout.
-//
-// We use Cashfree's redirect checkout as the normal browser flow. This avoids
-// relying on a browser popup/iframe Promise that has been observed to hang in
-// the Sandbox simulator. Cashfree returns to payment-status.html with the
-// order_id, and that page performs authenticated server-side verification.
 
 function showPremiumFeatures() {
     const token = localStorage.getItem("token");
@@ -55,10 +50,6 @@ async function buyPremium() {
             mode: "sandbox"
         });
 
-        // _self is deliberate. The hosted Cashfree checkout runs in the
-        // current tab and returns to our payment-status page. This prevents
-        // the application/dashboard from being opened inside a separate
-        // payment window and gives us one deterministic post-payment path.
         sessionStorage.setItem(
                 "pendingPaymentOrderId",
                 response.data.order_id

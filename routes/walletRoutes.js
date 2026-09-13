@@ -10,7 +10,8 @@ const {
     updateBudgetRules,
     upsertCategoryLimit,
     deleteCategoryLimit,
-    getSummary
+    getSummary,
+    getBudgetStatus
 } = require("../controller/walletController");
 
 router.get("/", authenticate, getWallet);
@@ -22,5 +23,6 @@ router.post("/budget-rules/category", authenticate, upsertCategoryLimit);
 router.delete("/budget-rules/category/:category", authenticate, deleteCategoryLimit);
 
 router.get("/summary", authenticate, getSummary);
+router.get("/budget-status", authenticate, getBudgetStatus);
 
 module.exports = router;

@@ -2,9 +2,7 @@ const { User } = require("../../model");
 
 const handlers = {
     PREMIUM_MEMBERSHIP: async ({ order, session }) => {
-        // The order state transition and this user update happen in the same
-        // MongoDB transaction. If the transaction fails, premium is not
-        // granted and the order does not become SUCCESSFUL.
+
         const user = await User.findById(order.userId).session(session);
 
         if (!user) {

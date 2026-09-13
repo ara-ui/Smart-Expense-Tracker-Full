@@ -31,4 +31,9 @@ const expenseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Budget-period and category queries use these indexes when rebuilding or
+// reconciling BudgetUsage from existing expenses.
+expenseSchema.index({ userId: 1, createdAt: 1 });
+expenseSchema.index({ userId: 1, category: 1, createdAt: 1 });
+
 module.exports = mongoose.model("Expense", expenseSchema);
