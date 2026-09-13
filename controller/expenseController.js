@@ -26,10 +26,6 @@ const addExpense = async (req, res) => {
         }
 
         let expense;
-
-        // Creating the expense and updating User.totalExpense together in a
-        // transaction so the two writes either both land or neither does
-        // (matches the atomicity the old Sequelize transaction provided).
         await session.withTransaction(async () => {
             const created = await Expense.create(
                 [{
@@ -118,19 +114,13 @@ const deleteExpense = async (req, res) => {
 
     try {
         let expense;
-
-        // Deleting the expense and updating User.totalExpense together in a
-        // transaction so a crash (or a concurrent request) can't leave one
-        // written without the other.
-        await session.withTransaction(async () => {
+           await session.withTransaction(async () => {
             expense = await Expense.findOne({
                 _id: req.params.id,
                 userId: req.user._id
             }).session(session);
 
             if (!expense) {
-                // Nothing to delete and nothing was written — let the
-                // transaction commit as a no-op and report 404 below.
                 return;
             }
 

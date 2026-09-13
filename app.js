@@ -24,9 +24,11 @@ app.use(morgan("combined", { stream: accessLogStream }));
 const userRoutes=require('./routes/userRoutes');
 const expenseRoutes=require('./routes/expenseRoutes');
 const purchaseRoutes = require("./routes/purchaseRoutes");
+const { cashfreeWebhook } = require("./controller/purchaseController");
 const premiumRoutes = require("./routes/premiumRoutes");
 const passwordRoutes = require("./routes/password");
 const reportsRoutes = require("./routes/reportsRoutes");
+const walletRoutes = require("./routes/walletRoutes");
 const errorHandler = require("./middleware/errorHandler");
 
 
@@ -58,6 +60,14 @@ app.use(cors({
     origin: allowedOrigin
 }));
 
+// Cashfree signs the exact raw request body. This route must be
+// registered before express.json() parses the body.
+app.post(
+    "/purchase/webhook/cashfree",
+    express.raw({ type: "application/json", limit: "1mb" }),
+    cashfreeWebhook
+);
+
 app.use(express.json());
 app.use(express.static('public'));
 app.get("/", (req, res) => {
@@ -74,6 +84,7 @@ app.use('/purchase', purchaseRoutes);
 app.use("/premium", premiumRoutes);
 app.use("/password", passwordRoutes);
 app.use("/expense", reportsRoutes);
+app.use("/wallet", walletRoutes);
 
 // central error handler - must be registered after all routes
 app.use(errorHandler);

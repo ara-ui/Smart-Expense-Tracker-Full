@@ -1,42 +1,39 @@
+// Premium membership + Cashfree checkout.
+//
+// We use Cashfree's redirect checkout as the normal browser flow. This avoids
+// relying on a browser popup/iframe Promise that has been observed to hang in
+// the Sandbox simulator. Cashfree returns to payment-status.html with the
+// order_id, and that page performs authenticated server-side verification.
 
-//show Premium Features
+function showPremiumFeatures() {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-function showPremiumFeatures(){
-    const token=localStorage.getItem("token");
+    const decodedToken = jwt_decode(token);
 
-    if(!token) return;
-
-    const decodedToken=jwt_decode(token);
-
-     if(decodedToken.isPremiumUser){
-
-        
-
+    if (decodedToken.isPremiumUser) {
         premiumNav.style.display = "flex";
-
-    }else{
-
-       
-
+    } else {
         premiumNav.style.display = "block";
-
-       
-
     }
 }
 
-
-
-
-
-//buy premium btn
 async function buyPremium() {
+    const button = document.getElementById("upgradeBtn");
 
     try {
-
         const token = localStorage.getItem("token");
 
-        // Create order from backend
+        if (!token) {
+            window.location.href = "login.html";
+            return;
+        }
+
+        if (button) {
+            button.disabled = true;
+            button.textContent = "Opening secure payment...";
+        }
+
         const response = await axios.get(
             `${BASE_URL}/purchase/premiummembership`,
             {
@@ -46,71 +43,43 @@ async function buyPremium() {
             }
         );
 
-        console.log(response.data);
+        if (
+            !response.data?.success ||
+            !response.data?.payment_session_id ||
+            !response.data?.order_id
+        ) {
+            throw new Error("Invalid payment order response");
+        }
 
         const cashfree = Cashfree({
             mode: "sandbox"
         });
 
-        const checkoutOptions = {
+        // _self is deliberate. The hosted Cashfree checkout runs in the
+        // current tab and returns to our payment-status page. This prevents
+        // the application/dashboard from being opened inside a separate
+        // payment window and gives us one deterministic post-payment path.
+        sessionStorage.setItem(
+                "pendingPaymentOrderId",
+                response.data.order_id
+            );        
+        await cashfree.checkout({
             paymentSessionId: response.data.payment_session_id,
-            redirectTarget: "_modal"
-        };
-
-        cashfree.checkout(checkoutOptions).then(async (result) => {
-
-            console.log(result);
-
-            // User closed payment popup
-            if (result.error) {
-
-                await axios.post(
-                    `${BASE_URL}/purchase/failedtransaction`,
-                    {
-                        order_id: response.data.order_id
-                    },
-                    {
-                        headers: {
-                            Authorization: token
-                        }
-                    }
-                );
-
-                alert("TRANSACTION FAILED");
-                return;
-            }
-
-            // Payment Successful
-            if (result.paymentDetails) {
-
-                const paymentResponse = await axios.post(
-                    `${BASE_URL}/purchase/updatetransactionstatus`,
-                    {
-                        order_id: response.data.order_id
-                    },
-                    {
-                        headers: {
-                            Authorization: token
-                        }
-                    }
-                );
-
-                // Save new premium token
-                localStorage.setItem("token", paymentResponse.data.token);
-
-                alert("Transaction Successful");
-
-                // Reload page to show premium features
-                location.reload();
-            }
-
+            redirectTarget: "_self"
         });
-
     } catch (err) {
+        console.error("Payment flow failed:", err);
 
-        console.log(err);
-        alert("Something went wrong");
+        if (button) {
+            button.disabled = false;
+            button.textContent = "⭐ Upgrade to Premium";
+        }
 
+        const message =
+            err.response?.data?.message ||
+            err.message ||
+            "Unable to start payment. Please try again.";
+
+        alert(message);
     }
-
 }

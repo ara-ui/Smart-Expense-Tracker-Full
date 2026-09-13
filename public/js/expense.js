@@ -16,10 +16,6 @@ window.addEventListener("DOMContentLoaded", ()=>{
 form.addEventListener("submit", addExpense);
 
 
-
-
-
-
 //rows per page
 
 document.getElementById("rowsPerPage").addEventListener("change", function(){
