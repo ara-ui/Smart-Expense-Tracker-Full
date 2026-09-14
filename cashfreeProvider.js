@@ -39,7 +39,10 @@ const createOrder = async ({ orderId, amountMinor, currency, user, remark = null
                 "9999999999"
         },
         order_meta: {
-            return_url: `${appUrl}/payment-status.html`,
+            // Keep the order id in the return URL itself. Cashfree also appends
+            // order_id, but embedding it here makes the callback independent
+            // of browser sessionStorage/origin changes (e.g. localhost -> ngrok).
+            return_url: `${appUrl}/payment-status.html?order_id=${encodeURIComponent(orderId)}`,
             notify_url: `${appUrl}/purchase/webhook/cashfree`
         }
     };

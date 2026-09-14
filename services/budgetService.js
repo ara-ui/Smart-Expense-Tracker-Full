@@ -221,6 +221,49 @@ function applicableRules(budgetRules, category) {
     return rules;
 }
 
+async function checkExpenseBudget({ userId, amount, category, date = new Date() }) {
+    const amountPaise = amountToPaise(amount);
+    const budgetRules = await getOrCreateBudgetRule(userId, null);
+    if (!budgetRules) return { amountPaise, checks: [] };
+
+    const rules = applicableRules(budgetRules, category);
+    const checks = [];
+
+    for (const rule of rules) {
+        const periodKey = getPeriodInfo(date)[rule.periodType].key;
+        const usage = await getOrInitializeUsage(
+            userId,
+            rule.periodType,
+            periodKey,
+            rule.category,
+            date,
+            null
+        );
+
+        const projected = usage.spentPaise + amountPaise;
+        if (amountPaise > rule.limitPaise || projected > rule.limitPaise) {
+            throw new BudgetExceededError({
+                period: rule.periodType,
+                category: rule.category,
+                limitPaise: rule.limitPaise,
+                spentPaise: usage.spentPaise,
+                requestedPaise: amountPaise,
+                remainingPaise: Math.max(0, rule.limitPaise - usage.spentPaise)
+            });
+        }
+
+        checks.push({
+            period: rule.periodType,
+            category: rule.category,
+            limitPaise: rule.limitPaise,
+            spentPaise: usage.spentPaise,
+            remainingPaise: rule.limitPaise - usage.spentPaise
+        });
+    }
+
+    return { amountPaise, checks };
+}
+
 async function enforceExpenseBudget({ userId, amount, category, session, date = new Date() }) {
     const amountPaise = amountToPaise(amount);
     const budgetRules = await getOrCreateBudgetRule(userId, session);
@@ -322,6 +365,7 @@ module.exports = {
     BudgetExceededError,
     amountToPaise,
     enforceExpenseBudget,
+    checkExpenseBudget,
     reverseExpenseBudget,
     getBudgetStatus,
     getOrCreateBudgetRule,

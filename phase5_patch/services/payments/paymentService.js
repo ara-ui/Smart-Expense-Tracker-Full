@@ -9,7 +9,40 @@ const { validateExpensePaymentInput, createExpenseFromPayment } = require("./exp
 
 const PROCESSING_LEASE_MS = 2 * 60 * 1000;
 
-const createPremiumOrder = async (user) => {
+const normalizeIdempotencyKey = (value) => {
+    if (typeof value !== "string" || !value.trim()) {
+        return crypto.randomUUID();
+    }
+
+    const key = value.trim();
+    if (key.length > 128) {
+        const error = new Error("Invalid idempotency key");
+        error.code = "INVALID_IDEMPOTENCY_KEY";
+        throw error;
+    }
+
+    return key;
+};
+
+const getExistingIdempotentOrder = async ({ userId, idempotencyKey, purpose }) =>
+    Order.findOne({ userId, idempotencyKey, purpose });
+
+const createPremiumOrder = async (user, { idempotencyKey, returnUrl } = {}) => {
+    const normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+    const existing = await getExistingIdempotentOrder({
+        userId: user._id,
+        idempotencyKey: normalizedKey,
+        purpose: "PREMIUM_MEMBERSHIP"
+    });
+
+    if (existing) {
+        return {
+            orderId: existing.orderId,
+            paymentSessionId: existing.paymentSessionId,
+            reused: true
+        };
+    }
+
     const orderId = `ORDER_${crypto.randomUUID().replace(/-/g, "")}`;
 
     const order = await Order.create({
@@ -19,7 +52,8 @@ const createPremiumOrder = async (user) => {
         amountMinor: 50000,
         currency: "INR",
         status: "PENDING",
-        userId: user._id
+        userId: user._id,
+        idempotencyKey: normalizedKey
     });
 
     try {
@@ -29,7 +63,8 @@ const createPremiumOrder = async (user) => {
             amountMinor: order.amountMinor,
             currency: order.currency,
             user,
-            remark: order.remark
+            remark: order.remark,
+            returnUrl
         });
 
         order.paymentSessionId = created.paymentSessionId;
@@ -48,7 +83,7 @@ const createPremiumOrder = async (user) => {
     }
 };
 
-const createExpensePaymentOrder = async ({ user, amount, remark }) => {
+const createExpensePaymentOrder = async ({ user, amount, remark, idempotencyKey, returnUrl }) => {
     if (!user?.isPremiumUser) {
         const error = new Error("Premium membership required");
         error.code = "PREMIUM_REQUIRED";
@@ -67,6 +102,22 @@ const createExpensePaymentOrder = async ({ user, amount, remark }) => {
         throw err;
     }
 
+    const normalizedKey = normalizeIdempotencyKey(idempotencyKey);
+    const existing = await getExistingIdempotentOrder({
+        userId: user._id,
+        idempotencyKey: normalizedKey,
+        purpose: "EXPENSE_PAYMENT"
+    });
+
+    if (existing) {
+        return {
+            orderId: existing.orderId,
+            paymentSessionId: existing.paymentSessionId,
+            category: existing.expenseCategory,
+            reused: true
+        };
+    }
+
     const orderId = `ORDER_${crypto.randomUUID().replace(/-/g, "")}`;
     const order = await Order.create({
         orderId,
@@ -77,7 +128,8 @@ const createExpensePaymentOrder = async ({ user, amount, remark }) => {
         remark: input.remark,
         expenseCategory: input.category,
         status: "PENDING",
-        userId: user._id
+        userId: user._id,
+        idempotencyKey: normalizedKey
     });
 
     try {
@@ -87,7 +139,8 @@ const createExpensePaymentOrder = async ({ user, amount, remark }) => {
             amountMinor: order.amountMinor,
             currency: order.currency,
             user,
-            remark: order.remark
+            remark: order.remark,
+            returnUrl
         });
 
         order.paymentSessionId = created.paymentSessionId;
@@ -174,7 +227,10 @@ const verifyAndApply = async ({ orderId, userId }) => {
     }
 
     const provider = getProvider(order.provider);
-    const payment = await provider.getPayments(order.orderId);
+    const payment = await provider.getPayments(order.orderId, {
+        amountMinor: order.amountMinor,
+        currency: order.currency
+    });
 
     if (payment.state === "PENDING") {
         await Order.updateOne(

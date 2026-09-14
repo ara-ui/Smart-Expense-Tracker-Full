@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment History | Expense Tracker</title>
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/userHeader.css">
+    <link rel="stylesheet" href="css/payment-history.css">
+</head>
+<body>
+    <div id="userHeaderContainer"></div>
+    <main class="history-page">
+        <header class="history-header">
+            <div>
+                <a href="payments.html" class="back-link">← Payments</a>
+                <h1>Payment History</h1>
+                <p>Every payment is recorded here for quick reference.</p>
+            </div>
+        </header>
+        <section id="historyList" class="history-list" aria-live="polite"></section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+    <script src="js/apiConfig.js"></script>
+    <script src="js/modules/auth.js"></script>
+    <script src="js/modules/userHeader.js"></script>
+    <script src="js/payment-history.js"></script>
+</body>
+</html>

@@ -87,6 +87,14 @@ const orderSchema = new mongoose.Schema(
             ref: "User",
             required: true,
             index: true
+        },
+
+        // Client supplied idempotency key. Scoped by user so a retried
+        // request cannot create a second local order.
+        idempotencyKey: {
+            type: String,
+            default: null,
+            trim: true
         }
     },
     {
@@ -96,5 +104,9 @@ const orderSchema = new mongoose.Schema(
 
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ provider: 1, orderId: 1 }, { unique: true });
+orderSchema.index(
+    { userId: 1, idempotencyKey: 1 },
+    { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
+);
 
 module.exports = mongoose.model("Order", orderSchema);

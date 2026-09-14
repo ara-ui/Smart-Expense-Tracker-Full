@@ -5,6 +5,14 @@ const {
 } = require("../services/payments/paymentService");
 const { processCashfreeWebhook } = require("../services/payments/webhookService");
 
+const getRequestReturnUrl = (req) => {
+    const origin = req.get("origin");
+    if (origin) return `${origin.replace(/\/+$/, "")}/payment-status.html`;
+
+    const appUrl = (process.env.APP_URL || "").replace(/\/+$/, "");
+    return appUrl ? `${appUrl}/payment-status.html` : null;
+};
+
 const successResponse = (res, user, order) => {
     const token = generateAccessToken(
         user._id,
@@ -32,7 +40,10 @@ exports.purchasePremium = async (req, res) => {
             });
         }
 
-        const result = await createPremiumOrder(req.user);
+        const result = await createPremiumOrder(req.user, {
+            idempotencyKey: req.get("Idempotency-Key"),
+            returnUrl: getRequestReturnUrl(req)
+        });
 
         return res.status(201).json({
             success: true,
@@ -79,12 +90,16 @@ exports.updateTransactionStatus = async (req, res) => {
             return res.status(202).json({
                 success: false,
                 pending: true,
+                purpose: result.order?.purpose,
+                redirect_to: result.order?.purpose === "EXPENSE_PAYMENT" ? "payments.html" : "expense.html",
                 message: "Payment is still being processed. Please check again."
             });
         }
 
         return res.status(400).json({
             success: false,
+            purpose: result.order?.purpose,
+            redirect_to: result.order?.purpose === "EXPENSE_PAYMENT" ? "payments.html" : "expense.html",
             message: "Payment was not successful"
         });
     } catch (err) {
@@ -107,7 +122,7 @@ exports.cashfreeReturn = async (req, res) => {
         return res.status(500).send("Payment return URL is not configured");
     }
 
-    const target = new URL(`${appUrl}/premium-required.html`);
+    const target = new URL(`${appUrl}/payment-status.html`);
     if (orderId) target.searchParams.set("order_id", orderId);
 
     return res.redirect(303, target.toString());

@@ -1,9 +1,3 @@
-// Central Express error handler. Most routes already catch their own
-// errors and respond directly, so this mainly exists as a safety net for
-// anything that reaches here uncaught (Express 5 auto-forwards rejected
-// async handlers here), plus a single place to turn common Mongoose/Mongo
-// errors into safe, generic client responses instead of leaking driver
-// internals, stack traces, or file paths.
 const errorHandler = (err, req, res, next) => {
     // Log full detail server-side only.
     console.error(err);

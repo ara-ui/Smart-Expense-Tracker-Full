@@ -345,6 +345,12 @@
     content: none;
 }
 
+.nav-lock {
+    font-size: 11px;
+    opacity: .7;
+}
+
+
 
 html.dark-theme .app-header {
     background: var(--card);
@@ -359,6 +365,16 @@ html.dark-theme .app-title {
 html.dark-theme .notification-btn {
     background: var(--secondary);
     color: var(--text);
+}
+
+html.dark-theme .payment-btn {
+    background: var(--secondary);
+    color: var(--text);
+}
+
+html.dark-theme .payment-btn:hover {
+    background: var(--primary);
+    color: #fff;
 }
 
 html.dark-theme .notification-btn:hover {

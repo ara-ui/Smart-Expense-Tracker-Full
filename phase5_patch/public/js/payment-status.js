@@ -3,13 +3,23 @@ const statusMessage = document.getElementById("paymentStatusMessage");
 const statusIcon = document.getElementById("paymentStatusIcon");
 const retryButton = document.getElementById("paymentRetryButton");
 const dashboardButton = document.getElementById("paymentDashboardButton");
-const pendingPurpose = sessionStorage.getItem("pendingPaymentPurpose");
-if (pendingPurpose === "EXPENSE_PAYMENT") {
-    dashboardButton.textContent = "Back to Payments";
-    dashboardButton.addEventListener("click", () => {
-        window.location.href = "payments.html";
-    });
-}
+const setReturnButton = (purpose) => {
+    dashboardButton.replaceWith(dashboardButton.cloneNode(true));
+    const button = document.getElementById("paymentDashboardButton");
+    if (purpose === "EXPENSE_PAYMENT") {
+        button.textContent = "Back to Payments";
+        button.addEventListener("click", () => {
+            window.location.href = "payments.html";
+        });
+    } else {
+        button.textContent = "Back to Dashboard";
+        button.addEventListener("click", () => {
+            window.location.href = "expense.html";
+        });
+    }
+};
+
+setReturnButton(null);
 
 const setStatus = (type, title, message) => {
     document.body.dataset.status = type;
@@ -62,6 +72,7 @@ const runVerification = async () => {
     for (let attempt = 0; attempt < 6; attempt += 1) {
         try {
             const result = await verifyPayment(orderId);
+            setReturnButton(result?.purpose);
 
             if (result?.success && result?.token) {
                 sessionStorage.removeItem("pendingPaymentOrderId");

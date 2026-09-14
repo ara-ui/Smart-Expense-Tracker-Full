@@ -35,7 +35,8 @@ const upsertTransaction = async ({ order, payment = null, status, session = null
             currency: order.currency,
             status: normalizedStatus,
             paymentMethod,
-            transactionDate: transactionDate ? new Date(transactionDate) : null
+            transactionDate: transactionDate ? new Date(transactionDate) : null,
+            remark: order.remark || null
         },
         $setOnInsert: {
             provider: order.provider,

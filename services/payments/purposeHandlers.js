@@ -1,4 +1,5 @@
 const { User } = require("../../model");
+const { createExpenseFromPayment } = require("./expensePaymentService");
 
 const handlers = {
     PREMIUM_MEMBERSHIP: async ({ order, session }) => {
@@ -11,6 +12,10 @@ const handlers = {
 
         user.isPremiumUser = true;
         await user.save({ session });
+    },
+
+    EXPENSE_PAYMENT: async ({ order, session }) => {
+        await createExpenseFromPayment({ order, session });
     }
 };
 

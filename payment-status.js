@@ -132,6 +132,10 @@ retryButton.addEventListener("click", () => {
     window.location.reload();
 });
 
+dashboardButton.addEventListener("click", () => {
+    window.location.href = "expense.html";
+});
+
 
 requireAuth();
 runVerification();

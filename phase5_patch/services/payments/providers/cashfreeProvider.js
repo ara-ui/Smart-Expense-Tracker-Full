@@ -21,8 +21,16 @@ const getAppUrl = () => {
 
 const toRupees = (amountMinor) => amountMinor / 100;
 
-const createOrder = async ({ orderId, amountMinor, currency, user, remark = null }) => {
+const createOrder = async ({
+    orderId,
+    amountMinor,
+    currency,
+    user,
+    remark = null,
+    returnUrl = null
+}) => {
     const appUrl = getAppUrl();
+    const resolvedReturnUrl = returnUrl || `${appUrl}/payment-status.html`;
 
     const request = {
         order_id: orderId,
@@ -39,14 +47,18 @@ const createOrder = async ({ orderId, amountMinor, currency, user, remark = null
                 "9999999999"
         },
         order_meta: {
-            return_url: `${appUrl}/payment-status.html`,
+            return_url: resolvedReturnUrl,
             notify_url: `${appUrl}/purchase/webhook/cashfree`
         }
     };
 
+    // Cashfree supports request-level idempotency. Reusing the same local
+    // order ID for a retried provider call prevents duplicate provider orders.
     const response = await Cashfree.PGCreateOrder(
         CASHFREE_API_VERSION,
-        request
+        request,
+        orderId,
+        orderId
     );
 
     if (
@@ -63,7 +75,31 @@ const createOrder = async ({ orderId, amountMinor, currency, user, remark = null
     };
 };
 
-const getPayments = async (orderId) => {
+const getPayments = async (orderId, expected = {}) => {
+    const orderResponse = await Cashfree.PGFetchOrder(
+        CASHFREE_API_VERSION,
+        orderId
+    );
+
+    const providerOrder = orderResponse.data;
+    if (!providerOrder || providerOrder.order_id !== orderId) {
+        const error = new Error("Cashfree returned an invalid order response");
+        error.code = "INVALID_PROVIDER_ORDER";
+        throw error;
+    }
+
+    if (expected.amountMinor && Number(providerOrder.order_amount) !== toRupees(expected.amountMinor)) {
+        const error = new Error("Cashfree order amount does not match the local order");
+        error.code = "PAYMENT_AMOUNT_MISMATCH";
+        throw error;
+    }
+
+    if (expected.currency && providerOrder.order_currency !== expected.currency) {
+        const error = new Error("Cashfree order currency does not match the local order");
+        error.code = "PAYMENT_CURRENCY_MISMATCH";
+        throw error;
+    }
+
     const response = await Cashfree.PGOrderFetchPayments(
         CASHFREE_API_VERSION,
         orderId
@@ -76,6 +112,12 @@ const getPayments = async (orderId) => {
     );
 
     if (successful) {
+        if (expected.amountMinor && Number(successful.payment_amount) !== toRupees(expected.amountMinor)) {
+            const error = new Error("Cashfree payment amount does not match the local order");
+            error.code = "PAYMENT_AMOUNT_MISMATCH";
+            throw error;
+        }
+
         return {
             state: "SUCCESS",
             paymentId: successful.cf_payment_id || null,

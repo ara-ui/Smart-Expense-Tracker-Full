@@ -51,6 +51,19 @@ const transactionSchema = new mongoose.Schema(
             index: true
         },
 
+        remark: {
+            type: String,
+            default: null,
+            trim: true
+        },
+
+        expenseId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Expense",
+            default: null,
+            index: true
+        },
+
         status: {
             type: String,
             required: true,

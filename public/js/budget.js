@@ -155,8 +155,8 @@ function setOverallEditMode(editing) {
     clearButton.hidden = !editing;
 }
 
-async function ensureBudgetReauth() {
-    if (budgetReauthToken) return true;
+async function ensureBudgetReauth({ force = false } = {}) {
+    if (!force && budgetReauthToken) return true;
 
     const modal = document.getElementById("budgetPasswordModal");
     const form = document.getElementById("budgetPasswordForm");
@@ -232,7 +232,7 @@ async function toggleOverallEditMode() {
         return;
     }
 
-    if (!(await ensureBudgetReauth())) return;
+    if (!(await ensureBudgetReauth({ force: true }))) return;
     setOverallEditMode(true);
     renderOverallInputs();
 }
@@ -511,7 +511,7 @@ async function saveCategoryLimit(event) {
 
         setButtonBusy(button, true, "Saving...", "Add / Update limit");
 
-        if (!(await ensureBudgetReauth())) return;
+        if (!(await ensureBudgetReauth({ force: true }))) return;
 
         const response = await api.post("/budget/rules/category", {
             category,
@@ -546,7 +546,7 @@ async function removeCategoryLimit(category, period) {
     const messageEl = document.getElementById("categoryBudgetMessage");
 
     try {
-        if (!(await ensureBudgetReauth())) return;
+        if (!(await ensureBudgetReauth({ force: true }))) return;
 
         await api.delete(
             `/budget/rules/category/${encodeURIComponent(category)}?period=${encodeURIComponent(period)}`,

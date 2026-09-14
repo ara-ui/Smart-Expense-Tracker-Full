@@ -181,13 +181,33 @@ document.addEventListener("DOMContentLoaded", async () => {
                 .pop()
                 .replace(".html", "");
 
+        const paymentNavLink = document.getElementById("paymentNavLink");
+        if (paymentNavLink) {
+            paymentNavLink.href = premium
+                ? "payments.html"
+                : "premium-required.html?return=payments.html";
+            paymentNavLink.title = premium ? "Payments" : "Payments (Premium)";
+        }
+
         const navLinks =
             document.querySelectorAll(
                 ".nav-link"
             );
 
-
         navLinks.forEach(link => {
+            if (link.classList.contains("premium-gated-nav")) {
+                const lock = link.querySelector(".nav-lock");
+
+                if (premium) {
+                    // Premium users have full access, so remove the visual lock.
+                    if (lock) {
+                        lock.remove();
+                    }
+                } else {
+                    const target = link.dataset.premiumPage || "expense.html";
+                    link.href = `premium-required.html?return=${encodeURIComponent(target)}`;
+                }
+            }
 
             const page =
                 link.dataset.page;

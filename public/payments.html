@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payments | Expense Tracker</title>
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/userHeader.css">
+    <link rel="stylesheet" href="css/payments.css">
+</head>
+<body>
+    <div id="userHeaderContainer"></div>
+
+    <main class="payments-page">
+        <header class="payments-header">
+            <div>
+                <p class="payments-eyebrow">FAST &amp; SIMPLE</p>
+                <h1>Payments</h1>
+                <p>Pay quickly and let your payment become an expense automatically.</p>
+            </div>
+            <a class="history-link" href="payment-history.html">View History</a>
+        </header>
+
+        <section class="payment-card" aria-labelledby="payTitle">
+            <div class="payment-card-heading">
+                <div>
+                    <h2 id="payTitle">Pay</h2>
+                    <p>Enter the amount and a short remark.</p>
+                </div>
+            </div>
+
+            <form id="paymentForm" novalidate>
+                <label for="paymentAmount">Amount</label>
+                <div class="amount-input-wrap">
+                    <span>₹</span>
+                    <input id="paymentAmount" name="amount" type="number" min="1" step="0.01" inputmode="decimal" placeholder="0.00" required>
+                </div>
+
+                <label for="paymentRemark">Remark</label>
+                <textarea id="paymentRemark" name="remark" rows="3" maxlength="200" placeholder="e.g. Groceries, Uber to office, electricity bill" required></textarea>
+                <div class="character-count"><span id="remarkCount">0</span>/200</div>
+
+                <p id="paymentMessage" class="payment-message" role="alert"></p>
+
+                <button id="payButton" class="pay-button" type="submit">Pay with Cashfree</button>
+            </form>
+        </section>
+
+        <section class="recent-section" aria-labelledby="recentTitle">
+            <div class="recent-heading">
+                <h2 id="recentTitle">Payment History</h2>
+                <a href="payment-history.html">View all</a>
+            </div>
+            <div id="recentPayments" class="payment-list" aria-live="polite"></div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode/build/jwt-decode.min.js"></script>
+    <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+    <script src="js/apiConfig.js"></script>
+    <script src="js/modules/auth.js"></script>
+    <script src="js/modules/userHeader.js"></script>
+    <script src="js/modules/premium.js"></script>
+    <script src="js/payments.js"></script>
+</body>
+</html>

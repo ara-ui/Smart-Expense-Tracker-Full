@@ -29,11 +29,13 @@ async function buyPremium() {
             button.textContent = "Opening secure payment...";
         }
 
+        const idempotencyKey = crypto.randomUUID();
         const response = await axios.get(
             `${BASE_URL}/purchase/premiummembership`,
             {
                 headers: {
-                    Authorization: token
+                    Authorization: token,
+                    "Idempotency-Key": idempotencyKey
                 }
             }
         );
